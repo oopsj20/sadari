@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>사다리 프로젝트 | 1분이면 알아요</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF8F0;
+    --surface:#FFFFFF;
+    --primary:#FF6B4A;
+    --primary-dark:#E85539;
+    --ink:#2D2A26;
+    --sub:#8A8378;
+    --line:#EDE4DA;
+    --accent-calm:#5B9BD5;
+    --accent-bold:#FF9F43;
+    --radius:20px;
+    --radius-sm:12px;
+    --shadow:0 8px 24px rgba(45,42,38,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans KR',sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    -webkit-tap-highlight-color:transparent;
+  }
+  h1,h2,.jua{font-family:'Jua',sans-serif;font-weight:400;}
+  #app{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    padding:0 20px;
+    overflow-x:hidden;
+  }
+  .screen{
+    display:none;
+    flex:1;
+    flex-direction:column;
+    padding:32px 0 24px;
+    animation:fadeIn .35s ease;
+  }
+  .screen.active{display:flex;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- 인트로 ---------- */
+  #screen-intro{align-items:center;text-align:center;justify-content:center;gap:14px;}
+  .intro-badge{
+    font-size:13px;color:var(--sub);
+    background:var(--surface);border:1px solid var(--line);
+    padding:6px 14px;border-radius:999px;
+  }
+  #screen-intro h1{font-size:38px;margin:6px 0 2px;color:var(--primary-dark);}
+  .intro-sub{font-size:16px;line-height:1.6;color:var(--ink);margin:0 0 8px;}
+  .intro-deco{font-size:56px;margin:8px 0;}
+  .cta-btn{
+    margin-top:12px;
+    background:var(--primary);color:#fff;border:none;
+    font-family:'Jua',sans-serif;font-size:18px;
+    padding:16px 28px;border-radius:999px;width:100%;
+    box-shadow:var(--shadow);cursor:pointer;
+  }
+  .cta-btn:active{background:var(--primary-dark);}
+  .intro-hint{font-size:12px;color:var(--sub);margin-top:6px;}
+
+  /* ---------- 사다리 진행바 (좌측 고정) ---------- */
+  #ladder-rail{
+    position:fixed;left:8px;top:50%;transform:translateY(-50%);
+    display:flex;flex-direction:column-reverse;gap:9px;
+    z-index:20;opacity:0;pointer-events:none;transition:opacity .3s;
+  }
+  #ladder-rail.visible{opacity:1;}
+  .rung{
+    width:24px;height:12px;border-radius:5px;
+    background:var(--line);border:2px solid var(--surface);
+    transition:background .25s;
+  }
+  .rung.filled{background:var(--primary);}
+
+  /* ---------- 퀴즈 ---------- */
+  #screen-quiz{padding-left:34px;}
+  .quiz-progress-text{
+    text-align:center;font-size:13px;color:var(--sub);margin-bottom:10px;font-weight:600;
+  }
+  #q-prompt{
+    text-align:center;font-size:21px;line-height:1.5;margin:4px 0 26px;color:var(--ink);
+  }
+  .choices{display:flex;flex-direction:column;gap:14px;flex:1;}
+  .choice-card{
+    background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);
+    padding:22px 18px;display:flex;align-items:center;gap:14px;
+    font-family:'IBM Plex Sans KR',sans-serif;font-size:17px;font-weight:600;color:var(--ink);
+    box-shadow:var(--shadow);cursor:pointer;text-align:left;
+    transition:transform .12s, border-color .12s;
+  }
+  .choice-card:active{transform:scale(0.97);border-color:var(--primary);}
+  .choice-emoji{font-size:30px;flex-shrink:0;}
+  .vs{text-align:center;font-family:'Jua',sans-serif;color:var(--sub);font-size:14px;}
+
+  /* ---------- 결과 ---------- */
+  #screen-result{align-items:stretch;gap:20px;}
+  .result-card{
+    background:var(--surface);border-radius:var(--radius);padding:28px 22px;
+    text-align:center;box-shadow:var(--shadow);border:2px solid var(--line);
+  }
+  .result-emoji{font-size:52px;margin-bottom:6px;}
+  #result-title{font-size:26px;margin:4px 0 10px;color:var(--primary-dark);}
+  #result-desc{font-size:15px;line-height:1.65;color:var(--ink);margin:0;}
+
+  #apply-form{
+    background:var(--surface);border-radius:var(--radius);padding:22px;
+    display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);border:2px solid var(--line);
+  }
+  #apply-form .form-title{font-size:15px;font-weight:700;margin:0 0 2px;}
+  #apply-form input[type=text],
+  #apply-form input[type=tel],
+  #apply-form input{
+    font-family:'IBM Plex Sans KR',sans-serif;font-size:15px;
+    padding:13px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--line);
+    background:var(--bg);color:var(--ink);
+  }
+  #apply-form input:focus{outline:none;border-color:var(--primary);}
+  .consent{
+    display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--sub);line-height:1.5;
+  }
+  .consent input{width:16px;height:16px;margin-top:2px;flex-shrink:0;}
+  .submit-btn{
+    background:var(--primary);color:#fff;border:none;font-family:'Jua',sans-serif;
+    font-size:17px;padding:15px;border-radius:999px;cursor:pointer;margin-top:4px;
+  }
+  .submit-btn:active{background:var(--primary-dark);}
+  .skip-btn{
+    background:none;border:none;color:var(--sub);font-size:13px;
+    text-decoration:underline;cursor:pointer;padding:4px;
+  }
+
+  /* ---------- 완료 ---------- */
+  #screen-done{align-items:center;justify-content:center;text-align:center;gap:10px;}
+  .done-emoji{font-size:56px;}
+  #screen-done h2{font-size:24px;margin:4px 0;color:var(--primary-dark);}
+  #screen-done p{font-size:15px;color:var(--sub);line-height:1.6;}
+  .restart-btn{
+    margin-top:16px;background:none;border:1.5px solid var(--line);color:var(--ink);
+    font-family:'IBM Plex Sans KR',sans-serif;font-size:14px;padding:11px 22px;border-radius:999px;cursor:pointer;
+  }
+
+  footer{
+    max-width:480px;margin:0 auto;width:100%;text-align:center;
+    font-size:11px;color:#C9C1B5;padding:16px 20px 22px;user-select:none;
+  }
+
+  /* ---------- 운영자 admin ---------- */
+  .admin-overlay{
+    position:fixed;inset:0;background:rgba(45,42,38,0.55);z-index:100;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .admin-overlay.hidden{display:none;}
+  .admin-panel{
+    background:#fff;width:100%;max-width:480px;max-height:80vh;
+    border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:10px;
+  }
+  .admin-head{display:flex;justify-content:space-between;align-items:center;}
+  .admin-head h3{margin:0;font-family:'Jua',sans-serif;font-size:18px;}
+  .admin-head button{border:none;background:var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;}
+  #admin-list{overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .admin-item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.6;}
+  .admin-item b{font-size:13.5px;}
+  .admin-empty{color:var(--sub);font-size:13px;text-align:center;padding:20px 0;}
+</style>
+</head>
+<body>
+
+<div id="ladder-rail">
+  <div class="rung" data-rung="1"></div>
+  <div class="rung" data-rung="2"></div>
+  <div class="rung" data-rung="3"></div>
+  <div class="rung" data-rung="4"></div>
+  <div class="rung" data-rung="5"></div>
+  <div class="rung" data-rung="6"></div>
+  <div class="rung" data-rung="7"></div>
+  <div class="rung" data-rung="8"></div>
+</div>
+
+<div id="app">
+
+  <section id="screen-intro" class="screen active">
+    <div class="intro-badge">찾아가는 복지문화협회</div>
+    <div class="intro-deco">🪜</div>
+    <h1>사다리 프로젝트</h1>
+    <p class="intro-sub">취향 고르듯 8번 선택하면<br>지금 내 마음 상태를 알 수 있어요</p>
+    <button class="cta-btn" onclick="startQuiz()">1분 테스트 시작하기</button>
+    <p class="intro-hint">이름도, 이유도 묻지 않아요. 딱 8번의 선택이면 충분해요</p>
+  </section>
+
+  <section id="screen-quiz" class="screen">
+    <div class="quiz-progress-text"><span id="q-num">1</span> / 8</div>
+    <h2 id="q-prompt"></h2>
+    <div class="choices">
+      <button class="choice-card" id="choice-a" onclick="selectChoice('a')">
+        <span class="choice-emoji" id="a-emoji"></span>
+        <span class="choice-text" id="a-text"></span>
+      </button>
+      <div class="vs">VS</div>
+      <button class="choice-card" id="choice-b" onclick="selectChoice('b')">
+        <span class="choice-emoji" id="b-emoji"></span>
+        <span class="choice-text" id="b-text"></span>
+      </button>
+    </div>
+  </section>
+
+  <section id="screen-result" class="screen">
+    <div class="result-card">
+      <div class="result-emoji" id="result-emoji"></div>
+      <h2 id="result-title"></h2>
+      <p id="result-desc"></p>
+    </div>
+
+    <form id="apply-form" onsubmit="submitForm(event)">
+      <p class="form-title">더 이야기 나눠보고 싶다면, 남겨주세요</p>
+      <input type="text" id="f-name" placeholder="이름" required>
+      <input type="tel" id="f-contact" placeholder="연락처 (휴대폰 번호)" required>
+      <input type="text" id="f-concern" placeholder="지금 가장 궁금하거나 고민되는 것, 한 줄로">
+      <label class="consent">
+        <input type="checkbox" id="f-consent" required>
+        상담 신청 및 연락 목적으로 개인정보(이름, 연락처)를 수집·이용하는 것에 동의합니다. 상담 완료 후 관련 법령에 따라 즉시 파기됩니다.
+      </label>
+      <button type="submit" class="submit-btn">상담 신청하기</button>
+      <button type="button" class="skip-btn" onclick="showDone(true)">신청 없이 결과만 볼게요</button>
+    </form>
+  </section>
+
+  <section id="screen-done" class="screen">
+    <div class="done-emoji">🎉</div>
+    <h2>신청이 접수됐어요</h2>
+    <p>곧 담당자가 연락드릴게요.<br>오늘도 좋은 하루 보내세요!</p>
+    <button class="restart-btn" onclick="restart()">처음으로</button>
+  </section>
+
+</div>
+
+<footer id="footer-note">찾아가는 복지문화협회 · 사다리 프로젝트</footer>
+
+<div id="admin" class="admin-overlay hidden">
+  <div class="admin-panel">
+    <div class="admin-head">
+      <h3>신청 목록</h3>
+      <button onclick="closeAdmin()">닫기</button>
+    </div>
+    <div id="admin-list"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* =========================================================
+   Firebase 실시간 동기화
+   daily-report / 핵심인력개발센터와 같은 Firebase 프로젝트를 쓰되,
+   루트 경로만 'ladder'로 분리해서 다른 앱 데이터와 섞이지 않게 함
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBz5HlQn39jilFvUNxQ4wy0v1Or-e-vP0I",
+  authDomain:        "dailynote-cb251.firebaseapp.com",
+  databaseURL:       "https://dailynote-cb251-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "dailynote-cb251",
+  storageBucket:     "dailynote-cb251.firebasestorage.app",
+  messagingSenderId: "985776629154",
+  appId:             "1:985776629154:web:3fde4899643248c4c87efb"
+};
+
+let _db = null;
+let _fbReady = false;
+(function initFirebase(){
+  try{
+    if(typeof firebase === 'undefined') return;
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    _db = firebase.database();
+    _fbReady = true;
+  }catch(e){
+    console.warn('[ladder] Firebase 미연결 → localStorage만 사용', e);
+  }
+})();
+
+function fbPushSubmission(record){
+  if(!_fbReady) return Promise.reject('firebase not ready');
+  return _db.ref('ladder/submissions').push(record);
+}
+
+function fbFetchSubmissions(){
+  if(!_fbReady) return Promise.resolve(null);
+  return _db.ref('ladder/submissions').get()
+    .then(snap => snap.exists() ? snap.val() : null)
+    .catch(() => null);
+}
+
+/* =========================================================
+   초안 문항입니다 — 실제 사용 전 검수/수정 필요
+   ========================================================= */
+const QUESTIONS = [
+  { id:1, axis:'dir',  prompt:'새로운 동네로 이사왔다. 첫 주말, 나는?',
+    a:{emoji:'🗺️', text:'일단 동네를 한 바퀴 돌아본다'},
+    b:{emoji:'🏃', text:'필요한 곳부터 바로 찾아간다'} },
+  { id:2, axis:'vibe', prompt:'주말 계획을 짤 때, 나는?',
+    a:{emoji:'🛋️', text:'늘 하던 루틴대로 편하게'},
+    b:{emoji:'🎲', text:'즉흥적으로 새로운 걸로'} },
+  { id:3, axis:'help', prompt:'마음에 걸리는 고민이 생기면, 나는?',
+    a:{emoji:'💬', text:'가까운 사람과 얘기하며 정리한다'},
+    b:{emoji:'🔍', text:'바로 방법이나 정보부터 찾는다'} },
+  { id:4, axis:'vibe', prompt:'메뉴판을 볼 때, 나는?',
+    a:{emoji:'🍚', text:'항상 먹던 그 메뉴'},
+    b:{emoji:'🌶️', text:'한 번도 안 먹어본 메뉴'} },
+  { id:5, axis:'help', prompt:'문제가 잘 안 풀릴 때, 나는?',
+    a:{emoji:'🫂', text:'누군가에게 털어놓고 싶다'},
+    b:{emoji:'🧭', text:'해결책부터 찾고 싶다'} },
+  { id:6, axis:'dir',  prompt:'새로운 일을 시작할 때, 나는?',
+    a:{emoji:'📚', text:'정보와 자료부터 충분히 모은다'},
+    b:{emoji:'⚡', text:'일단 부딪혀 보면서 배운다'} },
+  { id:7, axis:'vibe', prompt:'휴가를 보낸다면, 나는?',
+    a:{emoji:'🏡', text:'익숙한 곳에서 푹 쉰다'},
+    b:{emoji:'🧳', text:'낯선 곳으로 떠난다'} },
+  { id:8, axis:'dir',  prompt:'이루고 싶은 목표가 생기면, 나는?',
+    a:{emoji:'🤔', text:'방법을 충분히 고민한 후 움직인다'},
+    b:{emoji:'👣', text:'일단 작게라도 첫걸음을 뗀다'} },
+];
+
+const TYPES = {
+  'explorer-calm': { emoji:'🗺️', title:'지도 그리는 탐색가',
+    desc:'아직 방향을 정하는 중이고, 서두르기보다 하나씩 차분히 알아보고 싶은 편이에요. 선택지와 정보를 먼저 살펴본 뒤에 움직이고 싶어해요.' },
+  'explorer-bold': { emoji:'🎢', title:'사다리 앞의 모험가',
+    desc:'아직 방향은 정하지 않았지만, 새로운 걸 시도하는 데 거리낌이 없는 편이에요. 여러 가능성을 열어두고 재밌어 보이는 쪽으로 먼저 움직여요.' },
+  'runner-calm': { emoji:'🪜', title:'첫 칸 앞의 준비가',
+    desc:'하고 싶은 방향은 어느 정도 정해졌고, 확실하게 준비한 다음 시작하고 싶은 편이에요. 꼼꼼하게 계획을 세울 때 마음이 편해져요.' },
+  'runner-bold': { emoji:'🏃‍♂️', title:'이미 오르기 시작한 러너',
+    desc:'방향도 정했고, 이미 움직이기 시작했어요. 부딪히면서 배우는 걸 좋아하고, 속도감 있게 나아가는 편이에요.' },
+};
+
+let state = { step:0, answers:[], dir:0, vibe:0, help:0 };
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('ladder-rail').classList.toggle('visible', id==='screen-quiz');
+}
+
+function startQuiz(){
+  state = { step:0, answers:[], dir:0, vibe:0, help:0 };
+  document.querySelectorAll('.rung').forEach(r=>r.classList.remove('filled'));
+  showScreen('screen-quiz');
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = QUESTIONS[state.step];
+  document.getElementById('q-num').textContent = state.step + 1;
+  document.getElementById('q-prompt').textContent = q.prompt;
+  document.getElementById('a-emoji').textContent = q.a.emoji;
+  document.getElementById('a-text').textContent = q.a.text;
+  document.getElementById('b-emoji').textContent = q.b.emoji;
+  document.getElementById('b-text').textContent = q.b.text;
+}
+
+function selectChoice(choice){
+  const q = QUESTIONS[state.step];
+  state.answers.push({ id:q.id, axis:q.axis, choice, text: choice==='a' ? q.a.text : q.b.text });
+  if(choice === 'b'){
+    if(q.axis === 'dir') state.dir++;
+    if(q.axis === 'vibe') state.vibe++;
+    if(q.axis === 'help') state.help++;
+  }
+
+  const rung = document.querySelector('.rung[data-rung="' + (state.step+1) + '"]');
+  if(rung) rung.classList.add('filled');
+
+  state.step++;
+  if(state.step < QUESTIONS.length){
+    renderQuestion();
+  } else {
+    showResult();
+  }
+}
+
+function computeType(){
+  const dirKey = state.dir >= 2 ? 'runner' : 'explorer';
+  const vibeKey = state.vibe >= 2 ? 'bold' : 'calm';
+  return dirKey + '-' + vibeKey;
+}
+
+function computeHelpPref(){
+  if(state.help >= 2) return 'expert';
+  if(state.help === 0) return 'counsel';
+  return 'balanced';
+}
+
+let currentTypeKey = null;
+
+function showResult(){
+  currentTypeKey = computeType();
+  const t = TYPES[currentTypeKey];
+  document.getElementById('result-emoji').textContent = t.emoji;
+  document.getElementById('result-title').textContent = t.title;
+  document.getElementById('result-desc').textContent = t.desc;
+  showScreen('screen-result');
+}
+
+function formatAnswersText(){
+  return state.answers.map(a => 'Q' + a.id + '(' + a.axis + '): ' + a.choice.toUpperCase() + ' - ' + a.text).join(' / ');
+}
+
+function saveLocalBackup(record){
+  try{
+    localStorage.setItem('ladder:' + Date.now(), JSON.stringify(record));
+  }catch(e){ /* localStorage 사용 불가 환경 - 무시 */ }
+}
+
+function submitForm(e){
+  e.preventDefault();
+  const name = document.getElementById('f-name').value.trim();
+  const contact = document.getElementById('f-contact').value.trim();
+  const concern = document.getElementById('f-concern').value.trim();
+  const consent = document.getElementById('f-consent').checked;
+  if(!name || !contact || !consent) return;
+
+  const record = {
+    name, contact, concern,
+    type: currentTypeKey,
+    typeTitle: TYPES[currentTypeKey].title,
+    helpPref: computeHelpPref(),
+    answers: state.answers,
+    answersText: formatAnswersText(),
+    submittedAt: new Date().toISOString(),
+  };
+
+  saveLocalBackup(record);
+
+  fbPushSubmission(record)
+    .then(() => showDone(false))
+    .catch(() => showDone(false));
+}
+
+function showDone(skipped){
+  showScreen('screen-done');
+}
+
+function restart(){
+  document.getElementById('apply-form').reset();
+  showScreen('screen-intro');
+}
+
+/* ---------- 운영자용 신청 목록 (footer 더블탭) ---------- */
+let lastTap = 0;
+document.getElementById('footer-note').addEventListener('click', () => {
+  const now = Date.now();
+  if(now - lastTap < 400){
+    showAdmin();
+  }
+  lastTap = now;
+});
+
+function renderAdminList(items){
+  const list = document.getElementById('admin-list');
+  list.innerHTML = '';
+  items.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+  if(items.length === 0){
+    list.innerHTML = '<div class="admin-empty">아직 신청 내역이 없어요</div>';
+    return;
+  }
+  items.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'admin-item';
+    div.innerHTML =
+      '<b>' + r.name + '</b> · ' + r.contact + '<br>' +
+      '유형: ' + r.typeTitle + ' / 도움선호: ' + r.helpPref + '<br>' +
+      (r.concern ? '고민: ' + r.concern + '<br>' : '') +
+      new Date(r.submittedAt).toLocaleString('ko-KR');
+    list.appendChild(div);
+  });
+}
+
+function getLocalBackupItems(){
+  const items = [];
+  for(let i=0; i<localStorage.length; i++){
+    const key = localStorage.key(i);
+    if(key && key.indexOf('ladder:') === 0){
+      try{ items.push(JSON.parse(localStorage.getItem(key))); }catch(e){}
+    }
+  }
+  return items;
+}
+
+function showAdmin(){
+  document.getElementById('admin').classList.remove('hidden');
+  document.getElementById('admin-list').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+
+  fbFetchSubmissions().then(remote => {
+    if(remote){
+      renderAdminList(Object.values(remote));
+    } else {
+      renderAdminList(getLocalBackupItems());
+    }
+  });
+}
+
+function closeAdmin(){
+  document.getElementById('admin').classList.add('hidden');
+}
+</script>
+
+</body>
+</html>
