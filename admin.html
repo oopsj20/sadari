@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사다리 프로젝트 | 관리자</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF8F0;
+    --surface:#FFFFFF;
+    --primary:#FF6B4A;
+    --primary-dark:#E85539;
+    --ink:#2D2A26;
+    --sub:#8A8378;
+    --line:#EDE4DA;
+    --radius:20px;
+    --radius-sm:12px;
+    --shadow:0 8px 24px rgba(45,42,38,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:'IBM Plex Sans KR',sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  }
+  h1,.jua{font-family:'Jua',sans-serif;font-weight:400;}
+  #wrap{width:100%;max-width:560px;padding:28px 20px 40px;}
+
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  header h1{font-size:22px;margin:0;color:var(--primary-dark);}
+  header .count{font-size:13px;color:var(--sub);}
+
+  /* ---------- 잠금 화면 ---------- */
+  #lock-screen{
+    background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);
+    padding:32px 24px;text-align:center;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;gap:12px;margin-top:20vh;
+  }
+  #lock-screen .lock-emoji{font-size:40px;}
+  #lock-screen p{margin:0;font-size:14px;color:var(--sub);}
+  #lock-code{
+    font-family:'IBM Plex Sans KR',sans-serif;font-size:16px;letter-spacing:3px;text-align:center;
+    padding:14px;border-radius:var(--radius-sm);border:1.5px solid var(--line);
+    background:var(--bg);color:var(--ink);
+  }
+  #lock-code:focus{outline:none;border-color:var(--primary);}
+  #lock-error{color:#E85539;font-size:12.5px;min-height:16px;margin:0;}
+  #lock-submit{
+    background:var(--primary);color:#fff;border:none;font-family:'Jua',sans-serif;
+    font-size:16px;padding:14px;border-radius:999px;cursor:pointer;
+  }
+  #lock-submit:active{background:var(--primary-dark);}
+
+  /* ---------- 목록 화면 ---------- */
+  #list-screen{display:none;flex-direction:column;gap:12px;}
+  .toolbar{display:flex;gap:8px;}
+  .toolbar button{
+    flex:1;font-family:'IBM Plex Sans KR',sans-serif;font-size:13px;font-weight:600;
+    padding:10px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);
+    color:var(--ink);cursor:pointer;
+  }
+  .toolbar button:active{background:var(--line);}
+  #item-list{display:flex;flex-direction:column;gap:10px;}
+  .item{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;font-size:13px;line-height:1.7;box-shadow:var(--shadow);
+  }
+  .item b{font-size:15px;}
+  .item .meta{color:var(--sub);font-size:12px;}
+  .item .answers{
+    margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);color:var(--sub);
+  }
+  .empty{color:var(--sub);font-size:13px;text-align:center;padding:40px 0;}
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <header>
+    <h1>사다리 프로젝트 · 관리자</h1>
+    <span class="count" id="item-count"></span>
+  </header>
+
+  <div id="lock-screen">
+    <div class="lock-emoji">🔒</div>
+    <p>담당자 확인 코드를 입력하세요</p>
+    <input type="password" id="lock-code" inputmode="numeric" placeholder="코드 입력" autocomplete="off">
+    <p id="lock-error"></p>
+    <button id="lock-submit" onclick="checkCode()">확인</button>
+  </div>
+
+  <div id="list-screen">
+    <div class="toolbar">
+      <button onclick="loadList()">새로고침</button>
+      <button onclick="logout()">잠그기</button>
+    </div>
+    <div id="item-list"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* daily-report / 핵심인력개발센터와 같은 Firebase 프로젝트, 루트 경로만 'ladder'로 분리 */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBz5HlQn39jilFvUNxQ4wy0v1Or-e-vP0I",
+  authDomain:        "dailynote-cb251.firebaseapp.com",
+  databaseURL:       "https://dailynote-cb251-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "dailynote-cb251",
+  storageBucket:     "dailynote-cb251.firebasestorage.app",
+  messagingSenderId: "985776629154",
+  appId:             "1:985776629154:web:3fde4899643248c4c87efb"
+};
+
+let _db = null;
+let _fbReady = false;
+(function initFirebase(){
+  try{
+    if(typeof firebase === 'undefined') return;
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    _db = firebase.database();
+    _fbReady = true;
+  }catch(e){
+    console.warn('[ladder-admin] Firebase 연결 실패', e);
+  }
+})();
+
+function fbFetchSubmissions(){
+  if(!_fbReady) return Promise.reject('firebase not ready');
+  return _db.ref('ladder/submissions').get()
+    .then(snap => snap.exists() ? snap.val() : {});
+}
+
+/* TODO: 실제 사용 전에 이 코드를 원하는 값으로 바꾸세요 (index.html의 값과 맞출 필요는 없음) */
+const ADMIN_CODE = '2026';
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function formatAnswersHtml(answers){
+  if(!answers || !answers.length) return '';
+  return answers.map(a =>
+    'Q' + a.id + ' (' + a.choice.toUpperCase() + ') ' + escapeHtml(a.text)
+  ).join('<br>');
+}
+
+function renderList(items){
+  const list = document.getElementById('item-list');
+  const countEl = document.getElementById('item-count');
+  list.innerHTML = '';
+  items.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+  countEl.textContent = items.length ? '총 ' + items.length + '건' : '';
+
+  if(items.length === 0){
+    list.innerHTML = '<div class="empty">아직 신청 내역이 없어요</div>';
+    return;
+  }
+  items.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML =
+      '<b>' + escapeHtml(r.name) + '</b> · ' + escapeHtml(r.contact) + '<br>' +
+      '<span class="meta">' + new Date(r.submittedAt).toLocaleString('ko-KR') + '</span><br>' +
+      '유형: ' + escapeHtml(r.typeTitle) + ' / 도움선호: ' + escapeHtml(r.helpPref) + '<br>' +
+      (r.concern ? '고민: ' + escapeHtml(r.concern) + '<br>' : '') +
+      '<div class="answers">' + formatAnswersHtml(r.answers) + '</div>';
+    list.appendChild(div);
+  });
+}
+
+function loadList(){
+  document.getElementById('item-list').innerHTML = '<div class="empty">불러오는 중...</div>';
+  fbFetchSubmissions()
+    .then(remote => renderList(Object.values(remote || {})))
+    .catch(() => { document.getElementById('item-list').innerHTML = '<div class="empty">불러오지 못했어요. 새로고침을 눌러보세요</div>'; });
+}
+
+function unlock(){
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('list-screen').style.display = 'flex';
+  loadList();
+}
+
+function checkCode(){
+  const input = document.getElementById('lock-code').value.trim();
+  if(input === ADMIN_CODE){
+    sessionStorage.setItem('ladder_admin_ok', '1');
+    unlock();
+  } else {
+    document.getElementById('lock-error').textContent = '코드가 올바르지 않아요';
+    document.getElementById('lock-code').value = '';
+  }
+}
+
+document.getElementById('lock-code').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') checkCode();
+});
+
+function logout(){
+  sessionStorage.removeItem('ladder_admin_ok');
+  document.getElementById('list-screen').style.display = 'none';
+  document.getElementById('lock-screen').style.display = 'flex';
+  document.getElementById('lock-code').value = '';
+  document.getElementById('lock-code').focus();
+}
+
+if(sessionStorage.getItem('ladder_admin_ok') === '1'){
+  unlock();
+} else {
+  document.getElementById('lock-code').focus();
+}
+</script>
+
+</body>
+</html>

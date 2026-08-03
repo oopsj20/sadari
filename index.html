@@ -160,38 +160,6 @@
     max-width:480px;margin:0 auto;width:100%;text-align:center;
     font-size:11px;color:#C9C1B5;padding:16px 20px 22px;user-select:none;
   }
-
-  /* ---------- 운영자 admin ---------- */
-  .admin-overlay{
-    position:fixed;inset:0;background:rgba(45,42,38,0.55);z-index:100;
-    display:flex;align-items:flex-end;justify-content:center;
-  }
-  .admin-overlay.hidden{display:none;}
-  .admin-panel{
-    background:#fff;width:100%;max-width:480px;max-height:80vh;
-    border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:10px;
-  }
-  .admin-head{display:flex;justify-content:space-between;align-items:center;}
-  .admin-head h3{margin:0;font-family:'Jua',sans-serif;font-size:18px;}
-  .admin-head button{border:none;background:var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;}
-  #admin-list{overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
-  .admin-item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.6;}
-  .admin-item b{font-size:13.5px;}
-  .admin-answers{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);color:var(--sub);}
-  .admin-empty{color:var(--sub);font-size:13px;text-align:center;padding:20px 0;}
-  #admin-lock{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px;}
-  #admin-lock p{margin:0;font-size:13px;color:var(--sub);}
-  #admin-lock input{
-    font-family:'IBM Plex Sans KR',sans-serif;font-size:15px;
-    padding:13px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--line);
-    background:var(--bg);color:var(--ink);letter-spacing:2px;
-  }
-  #admin-lock input:focus{outline:none;border-color:var(--primary);}
-  #admin-lock button{
-    background:var(--primary);color:#fff;border:none;font-family:'Jua',sans-serif;
-    font-size:15px;padding:13px;border-radius:999px;cursor:pointer;
-  }
-  #admin-lock-error{color:#E85539;font-size:12.5px;min-height:16px;margin:0;}
 </style>
 </head>
 <body>
@@ -264,23 +232,7 @@
 
 </div>
 
-<footer id="footer-note">찾아가는 복지문화협회 · 사다리 프로젝트</footer>
-
-<div id="admin" class="admin-overlay hidden">
-  <div class="admin-panel">
-    <div class="admin-head">
-      <h3>신청 목록</h3>
-      <button onclick="closeAdmin()">닫기</button>
-    </div>
-    <div id="admin-lock">
-      <p>담당자 확인 코드를 입력하세요</p>
-      <input type="password" id="admin-code-input" inputmode="numeric" placeholder="코드 입력" autocomplete="off">
-      <p id="admin-lock-error"></p>
-      <button onclick="checkAdminCode()">확인</button>
-    </div>
-    <div id="admin-list"></div>
-  </div>
-</div>
+<footer>찾아가는 복지문화협회 · 사다리 프로젝트</footer>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -316,13 +268,6 @@ let _fbReady = false;
 function fbPushSubmission(record){
   if(!_fbReady) return Promise.reject('firebase not ready');
   return _db.ref('ladder/submissions').push(record);
-}
-
-function fbFetchSubmissions(){
-  if(!_fbReady) return Promise.resolve(null);
-  return _db.ref('ladder/submissions').get()
-    .then(snap => snap.exists() ? snap.val() : null)
-    .catch(() => null);
 }
 
 /* =========================================================
@@ -476,111 +421,6 @@ function showDone(skipped){
 function restart(){
   document.getElementById('apply-form').reset();
   showScreen('screen-intro');
-}
-
-/* ---------- 운영자용 신청 목록 (footer 더블탭) ---------- */
-let lastTap = 0;
-document.getElementById('footer-note').addEventListener('click', () => {
-  const now = Date.now();
-  if(now - lastTap < 400){
-    showAdmin();
-  }
-  lastTap = now;
-});
-
-function escapeHtml(str){
-  const div = document.createElement('div');
-  div.textContent = str == null ? '' : String(str);
-  return div.innerHTML;
-}
-
-function formatAnswersHtml(answers){
-  if(!answers || !answers.length) return '';
-  return answers.map(a =>
-    'Q' + a.id + ' (' + a.choice.toUpperCase() + ') ' + escapeHtml(a.text)
-  ).join('<br>');
-}
-
-function renderAdminList(items){
-  const list = document.getElementById('admin-list');
-  list.innerHTML = '';
-  items.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-
-  if(items.length === 0){
-    list.innerHTML = '<div class="admin-empty">아직 신청 내역이 없어요</div>';
-    return;
-  }
-  items.forEach(r => {
-    const div = document.createElement('div');
-    div.className = 'admin-item';
-    div.innerHTML =
-      '<b>' + escapeHtml(r.name) + '</b> · ' + escapeHtml(r.contact) + '<br>' +
-      '유형: ' + escapeHtml(r.typeTitle) + ' / 도움선호: ' + escapeHtml(r.helpPref) + '<br>' +
-      (r.concern ? '고민: ' + escapeHtml(r.concern) + '<br>' : '') +
-      new Date(r.submittedAt).toLocaleString('ko-KR') +
-      '<div class="admin-answers">' + formatAnswersHtml(r.answers) + '</div>';
-    list.appendChild(div);
-  });
-}
-
-function getLocalBackupItems(){
-  const items = [];
-  for(let i=0; i<localStorage.length; i++){
-    const key = localStorage.key(i);
-    if(key && key.indexOf('ladder:') === 0){
-      try{ items.push(JSON.parse(localStorage.getItem(key))); }catch(e){}
-    }
-  }
-  return items;
-}
-
-/* TODO: 실제 사용 전에 이 코드를 원하는 값으로 바꾸세요 */
-const ADMIN_CODE = '2026';
-
-function loadAdminList(){
-  document.getElementById('admin-list').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
-  fbFetchSubmissions().then(remote => {
-    if(remote){
-      renderAdminList(Object.values(remote));
-    } else {
-      renderAdminList(getLocalBackupItems());
-    }
-  });
-}
-
-function showAdmin(){
-  document.getElementById('admin').classList.remove('hidden');
-  const unlocked = sessionStorage.getItem('ladder_admin_ok') === '1';
-  document.getElementById('admin-lock').style.display = unlocked ? 'none' : 'flex';
-  document.getElementById('admin-list').style.display = unlocked ? 'flex' : 'none';
-  if(unlocked){
-    loadAdminList();
-  } else {
-    document.getElementById('admin-code-input').value = '';
-    document.getElementById('admin-lock-error').textContent = '';
-    setTimeout(() => document.getElementById('admin-code-input').focus(), 50);
-  }
-}
-
-function checkAdminCode(){
-  const input = document.getElementById('admin-code-input').value.trim();
-  if(input === ADMIN_CODE){
-    sessionStorage.setItem('ladder_admin_ok', '1');
-    document.getElementById('admin-lock').style.display = 'none';
-    document.getElementById('admin-list').style.display = 'flex';
-    loadAdminList();
-  } else {
-    document.getElementById('admin-lock-error').textContent = '코드가 올바르지 않아요';
-    document.getElementById('admin-code-input').value = '';
-  }
-}
-
-document.getElementById('admin-code-input').addEventListener('keydown', (e) => {
-  if(e.key === 'Enter') checkAdminCode();
-});
-
-function closeAdmin(){
-  document.getElementById('admin').classList.add('hidden');
 }
 </script>
 
