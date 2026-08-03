@@ -3,7 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>사다리 프로젝트 | 관리자</title>
+<script>
+(function(){
+  var APP_VERSION = '2026-08-03-1';
+  if(localStorage.getItem('ladder_admin_version') !== APP_VERSION){
+    localStorage.setItem('ladder_admin_version', APP_VERSION);
+    if(location.search.indexOf('_v=') === -1){
+      location.replace(location.pathname + '?_v=' + Date.now());
+    }
+  }
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
